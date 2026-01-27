@@ -8,18 +8,20 @@ communication with automatic reconnection support.
 Example usage:
     config = SerialConfig(9600, 8, "N", 1)
     port = PortNumber(13)
-    connection = SerialConnection(port, config)
+    raw = SerialConnection(port, config)
 
-    result = connection.open()
+    result = raw.open()
     if result.successful():
-        bytes_result = connection.receive()
+        bytes_result = raw.receive()
         if bytes_result.successful():
             data = bytes_result.value().content()
 
-    # Buffered connection for partial message handling:
+    # Framed connection for complete message handling:
+    delay = Delay(0.1)
+    delayed = DelayedConnection(raw, delay)
     delimiter = KsumDelimiter()
-    buffered = BufferedConnection(connection, delimiter)
-    result = buffered.receive()  # Returns complete messages only
+    framed = FramedConnection(delayed, delimiter)
+    result = framed.receive()  # Returns complete messages only
 """
 import time
 from serial_to_mqtt.result.either import Right, Left
@@ -180,37 +182,33 @@ class SerialConfig(object):
         return self._stopbits
 
 
-class BufferedConnection(object):
+class DelayedConnection(object):
     """
-    Buffered serial connection that accumulates bytes until complete messages.
+    Connection decorator that adds delay after each read.
 
-    BufferedConnection wraps a SerialConnection and uses a delimiter to
-    identify when complete messages are available. It maintains state between
-    calls to handle messages split across multiple reads.
+    DelayedConnection wraps another connection and waits after
+    each receive() call, giving time for data to accumulate.
 
     Example usage:
-        connection = SerialConnection(port, config)
-        delimiter = KsumDelimiter()
-        buffered = BufferedConnection(connection, delimiter)
-
-        result = buffered.receive()  # Returns only complete messages
+        raw = SerialConnection(port, config)
+        delay = Delay(0.1)
+        delayed = DelayedConnection(raw, delay)
     """
 
-    def __init__(self, connection, delimiter):
+    def __init__(self, connection, delay):
         """
-        Create a BufferedConnection wrapping a connection.
+        Create a DelayedConnection.
 
         Args:
-            connection: SerialConnection to wrap
-            delimiter: Delimiter for identifying message boundaries
+            connection: Connection to wrap
+            delay: Delay to wait after each read
         """
         self._connection = connection
-        self._delimiter = delimiter
-        self._accumulated = AccumulatedBytes("")
+        self._delay = delay
 
     def open(self):
         """
-        Open the underlying serial connection.
+        Open the underlying connection.
 
         Returns:
             Either: Right(success) if open succeeds, Left(error) if fails
@@ -219,27 +217,87 @@ class BufferedConnection(object):
 
     def receive(self):
         """
-        Receive complete message from serial connection.
+        Receive bytes and wait.
+
+        Returns:
+            Either: Right(ReceivedBytes) if successful, Left(error) if failed
+
+        This method reads from inner connection, then waits.
+        """
+        result = self._connection.receive()
+        self._delay.wait()
+        return result
+
+    def close(self):
+        """
+        Close the underlying connection.
+
+        Returns:
+            Either: Right(success) if close succeeds, Left(error) if fails
+        """
+        return self._connection.close()
+
+
+class FramedConnection(object):
+    """
+    Framed connection that accumulates bytes until complete messages.
+
+    FramedConnection loops calling the inner connection until
+    delimiter finds a complete message. No delay logic - use
+    DelayedConnection as inner connection for delays.
+
+    Example usage:
+        delayed = DelayedConnection(raw, Delay(0.1))
+        delimiter = KsumDelimiter()
+        framed = FramedConnection(delayed, delimiter)
+    """
+
+    def __init__(self, connection, delimiter):
+        """
+        Create a FramedConnection.
+
+        Args:
+            connection: Connection to wrap (typically DelayedConnection)
+            delimiter: Delimiter for identifying message boundaries
+        """
+        self._connection = connection
+        self._delimiter = delimiter
+        self._accumulated = AccumulatedBytes("")
+
+    def open(self):
+        """
+        Open the underlying connection.
+
+        Returns:
+            Either: Right(success) if open succeeds, Left(error) if fails
+        """
+        return self._connection.open()
+
+    def receive(self):
+        """
+        Receive complete message from connection.
 
         Returns:
             Either: Right(ReceivedBytes) with complete message, Left(error) if failed
 
-        This method accumulates bytes until a complete message is found.
-        If multiple messages are available, returns the first one.
+        This method loops until a complete message is found.
         """
-        result = self._connection.receive()
-        if not result.successful():
-            return result
-        self._accumulated = self._accumulated.append(result.value())
-        extraction = self._delimiter.extract(self._accumulated.content())
-        if extraction.empty():
-            return Right(ReceivedBytes(""))
-        self._accumulated = self._accumulated.trim(extraction.remainder())
-        return Right(ReceivedBytes(extraction.messages()[0]))
+        while True:
+            result = self._connection.receive()
+            if not result.successful():
+                return result
+            self._accumulated = self._accumulated.append(result.value())
+            extraction = self._delimiter.extract(self._accumulated.content())
+            if not extraction.empty():
+                first = extraction.messages()[0]
+                content = self._accumulated.content()
+                position = content.find(first) + len(first)
+                self._accumulated = self._accumulated.trim(content[position:])
+                return Right(ReceivedBytes(first))
 
     def close(self):
         """
-        Close the underlying serial connection.
+        Close the underlying connection.
 
         Returns:
             Either: Right(success) if close succeeds, Left(error) if fails

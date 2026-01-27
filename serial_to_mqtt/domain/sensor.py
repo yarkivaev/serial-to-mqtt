@@ -3,13 +3,12 @@
 Sensor abstraction for reading temperature measurements.
 
 This module provides the Sensor implementation which coordinates
-serial connection, protocol parsing, and delay between readings.
+serial connection and protocol parsing.
 
 Example usage:
-    connection = SerialConnection(port, config)
+    connection = FramedConnection(delayed, delimiter)
     protocol = KsumProtocol()
-    delay = Delay(0.3)
-    sensor = Sensor(connection, protocol, delay)
+    sensor = Sensor(connection, protocol)
 
     result = sensor.read()
     if result.successful():
@@ -22,58 +21,44 @@ from serial_to_mqtt.result.either import Right, Left
 
 class Sensor(object):
     """
-    Sensor implementation using serial connection and protocol.
+    Sensor implementation using connection and protocol.
 
-    Sensor coordinates three collaborators:
-    1. SerialConnection - provides raw bytes from hardware
+    Sensor coordinates two collaborators:
+    1. Connection - provides raw bytes from hardware
     2. Protocol - parses bytes into Reading
-    3. Delay - waits between readings
-
-    This serves as both the base class for domain-specific sensors
-    and the default implementation when no domain-specific sensor is needed.
 
     Example usage:
-        connection = SerialConnection(13, SerialConfig())
-        protocol = KsumProtocol()
-        delay = Delay(0.3)
-        sensor = Sensor(connection, protocol, delay)
+        connection = FramedConnection(delayed, delimiter)
+        protocol = KsumProtocol(...)
+        sensor = Sensor(connection, protocol)
 
         result = sensor.read()
         if result.successful():
             print(result.value().json())
     """
 
-    def __init__(self, connection, protocol, delay):
+    def __init__(self, connection, protocol):
         """
-        Create a Sensor with connection, protocol, and delay.
+        Create a Sensor with connection and protocol.
 
         Args:
-            connection: SerialConnection providing raw bytes
+            connection: Connection providing complete messages
             protocol: Protocol for parsing bytes into Reading
-            delay: Delay to wait between readings
         """
         self._connection = connection
         self._protocol = protocol
-        self._delay = delay
 
     def read(self):
         """
-        Read a temperature measurement from the sensor.
+        Read a measurement from the sensor.
 
         Returns:
             Either: Right(Reading) if successful, Left(error) if failed
-
-        This method:
-        1. Receives bytes from the connection
-        2. Waits for the delay period
-        3. Parses bytes using the protocol
-        4. Returns Either with Reading or error
         """
-        bytes_result = self._connection.receive()
-        self._delay.wait()
-        if not bytes_result.successful():
-            return Left(bytes_result.error())
-        return self._protocol.parse(bytes_result.value())
+        result = self._connection.receive()
+        if not result.successful():
+            return Left(result.error())
+        return self._protocol.parse(result.value())
 
 
 class Delay(object):

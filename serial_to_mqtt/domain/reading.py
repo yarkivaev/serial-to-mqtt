@@ -71,6 +71,15 @@ class Reading(object):
         """
         return self._measurement
 
+    def publishable(self):
+        """
+        Check if this reading should be published.
+
+        Returns:
+            bool: True if reading should be published, False to skip
+        """
+        return True
+
 
 class Epoch(object):
     """

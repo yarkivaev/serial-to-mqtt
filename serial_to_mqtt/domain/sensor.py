@@ -8,7 +8,7 @@ serial connection, protocol parsing, and delay between readings.
 Example usage:
     connection = SerialConnection(port, config)
     protocol = KsumProtocol()
-    delay = Delay()
+    delay = Delay(0.3)
     sensor = Sensor(connection, protocol, delay)
 
     result = sensor.read()
@@ -35,7 +35,7 @@ class Sensor(object):
     Example usage:
         connection = SerialConnection(13, SerialConfig())
         protocol = KsumProtocol()
-        delay = Delay()
+        delay = Delay(0.3)
         sensor = Sensor(connection, protocol, delay)
 
         result = sensor.read()
@@ -64,13 +64,13 @@ class Sensor(object):
             Either: Right(Reading) if successful, Left(error) if failed
 
         This method:
-        1. Waits for the delay period
-        2. Receives bytes from the connection
+        1. Receives bytes from the connection
+        2. Waits for the delay period
         3. Parses bytes using the protocol
         4. Returns Either with Reading or error
         """
-        self._delay.wait()
         bytes_result = self._connection.receive()
+        self._delay.wait()
         if not bytes_result.successful():
             return Left(bytes_result.error())
         return self._protocol.parse(bytes_result.value())
@@ -78,28 +78,28 @@ class Sensor(object):
 
 class Delay(object):
     """
-    One second delay implementation.
+    Configurable delay between sensor readings.
 
-    Delay waits for one second between sensor readings.
-    This matches the legacy system's polling interval.
-    Serves as both the base class for domain-specific delays
-    and the default implementation.
+    Delay waits for a specified duration between sensor readings.
 
     Example usage:
-        delay = Delay()
-        delay.wait()  # Blocks for 1 second
+        delay = Delay(0.3)
+        delay.wait()  # Blocks for 0.3 seconds
     """
 
-    def __init__(self):
+    def __init__(self, seconds):
         """
-        Create a Delay.
+        Create a Delay with specified duration.
+
+        Args:
+            seconds (float): Duration to wait in seconds
         """
-        pass
+        self._seconds = seconds
 
     def wait(self):
         """
-        Wait for one second.
+        Wait for the configured duration.
 
-        This method blocks for 1 second before returning.
+        This method blocks for the configured number of seconds.
         """
-        time.sleep(1)
+        time.sleep(self._seconds)

@@ -288,9 +288,10 @@ class FramedConnection(object):
                 return result
             self._accumulated = self._accumulated.append(result.value())
             content = self._accumulated.content()
-            print("DEBUG accumulated: {0}".format(repr(content)))
+            hexcontent = ' '.join('{0:02x}'.format(ord(c)) for c in content[-50:])
+            print("DEBUG hex: {0}".format(hexcontent))
             extraction = self._delimiter.extract(content)
-            print("DEBUG messages: {0}, remainder: {1}".format(extraction.messages(), repr(extraction.remainder())))
+            print("DEBUG msgs: {0}".format(len(extraction.messages())))
             if not extraction.empty():
                 first = extraction.messages()[0]
                 position = content.find(first) + len(first)

@@ -287,10 +287,12 @@ class FramedConnection(object):
             if not result.successful():
                 return result
             self._accumulated = self._accumulated.append(result.value())
-            extraction = self._delimiter.extract(self._accumulated.content())
+            content = self._accumulated.content()
+            print("DEBUG accumulated: {0}".format(repr(content)))
+            extraction = self._delimiter.extract(content)
+            print("DEBUG messages: {0}, remainder: {1}".format(extraction.messages(), repr(extraction.remainder())))
             if not extraction.empty():
                 first = extraction.messages()[0]
-                content = self._accumulated.content()
                 position = content.find(first) + len(first)
                 self._accumulated = self._accumulated.trim(content[position:])
                 return Right(ReceivedBytes(first))

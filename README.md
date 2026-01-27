@@ -8,7 +8,7 @@ Generic protocol-agnostic serial sensor to MQTT library.
 pip install -e .
 ```
 
-Requires Python 3.3+ and pyserial 3.4.
+Requires Python 3.3+ and pyserial 2.7.
 
 ## Usage
 

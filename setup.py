@@ -20,7 +20,7 @@ setup(
         'serial_to_mqtt.result'
     ],
     install_requires=[
-        'pyserial==3.4'
+        'pyserial==2.7'
     ],
     python_requires='>=3.3'
 )

@@ -270,7 +270,7 @@ class KsumDelimiterPartialMessageBuffers(unittest.TestCase):
         KsumDelimiter partial message without next marker stays in buffer.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;25.5;38444")
+        extraction = delimiter.extract("?!1;25.5;38444")
         self.assertTrue(
             extraction.empty(),
             "KsumDelimiter partial message was incorrectly extracted"
@@ -287,9 +287,9 @@ class KsumDelimiterPartialMessageKeepsRemainder(unittest.TestCase):
         KsumDelimiter partial message kept in remainder.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;25.5;38444")
+        extraction = delimiter.extract("?!1;25.5;38444")
         self.assertEqual(
-            "!1;25.5;38444",
+            "?!1;25.5;38444",
             extraction.remainder(),
             "KsumDelimiter partial message not kept in remainder"
         )
@@ -305,7 +305,7 @@ class KsumDelimiterCompleteMessageExtracts(unittest.TestCase):
         KsumDelimiter complete message with next marker is extracted.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;25.5;38444!2;30")
+        extraction = delimiter.extract("?!1;25.5;38444?!2;30")
         self.assertFalse(
             extraction.empty(),
             "KsumDelimiter complete message was not extracted"
@@ -322,9 +322,9 @@ class KsumDelimiterCompleteMessageCorrect(unittest.TestCase):
         KsumDelimiter extracts correct complete message.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;25.5;38444!2;30")
+        extraction = delimiter.extract("?!1;25.5;38444?!2;30")
         self.assertEqual(
-            ["!1;25.5;38444"],
+            ["?!1;25.5;38444"],
             extraction.messages(),
             "KsumDelimiter extracted wrong message"
         )
@@ -340,9 +340,9 @@ class KsumDelimiterCompleteMessageRemainder(unittest.TestCase):
         KsumDelimiter keeps correct remainder after extraction.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;25.5;38444!2;30")
+        extraction = delimiter.extract("?!1;25.5;38444?!2;30")
         self.assertEqual(
-            "!2;30",
+            "?!2;30",
             extraction.remainder(),
             "KsumDelimiter kept wrong remainder"
         )
@@ -358,9 +358,9 @@ class KsumDelimiterMultipleMessagesExtractsAll(unittest.TestCase):
         KsumDelimiter multiple complete messages are all extracted.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;25.5;38444!2;30.0;12345!3;40")
+        extraction = delimiter.extract("?!1;25.5;38444?!2;30.0;12345?!3;40")
         self.assertEqual(
-            ["!1;25.5;38444", "!2;30.0;12345"],
+            ["?!1;25.5;38444", "?!2;30.0;12345"],
             extraction.messages(),
             "KsumDelimiter did not extract all complete messages"
         )
@@ -376,9 +376,9 @@ class KsumDelimiterMultipleMessagesRemainder(unittest.TestCase):
         KsumDelimiter keeps correct remainder after multiple messages.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;25.5;38444!2;30.0;12345!3;40")
+        extraction = delimiter.extract("?!1;25.5;38444?!2;30.0;12345?!3;40")
         self.assertEqual(
-            "!3;40",
+            "?!3;40",
             extraction.remainder(),
             "KsumDelimiter kept wrong remainder after multiple messages"
         )
@@ -394,9 +394,9 @@ class KsumDelimiterGarbageBeforeMarkerDiscarded(unittest.TestCase):
         KsumDelimiter garbage before first marker is discarded.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("garbage!1;25.5;38444!2")
+        extraction = delimiter.extract("garbage?!1;25.5;38444?!2")
         self.assertEqual(
-            ["!1;25.5;38444"],
+            ["?!1;25.5;38444"],
             extraction.messages(),
             "KsumDelimiter message not extracted when garbage precedes"
         )
@@ -412,9 +412,9 @@ class KsumDelimiterInvalidStructureSkipped(unittest.TestCase):
         KsumDelimiter invalid message structure is skipped.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!invalid!1;25.5;38444!2")
+        extraction = delimiter.extract("?!invalid?!1;25.5;38444?!2")
         self.assertEqual(
-            ["!1;25.5;38444"],
+            ["?!1;25.5;38444"],
             extraction.messages(),
             "KsumDelimiter valid message not extracted after invalid"
         )
@@ -430,9 +430,9 @@ class KsumDelimiterMarkerMessageExtracted(unittest.TestCase):
         KsumDelimiter marker message with $ value is extracted.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;$49;38444!2;30")
+        extraction = delimiter.extract("?!1;$49;38444?!2;30")
         self.assertEqual(
-            ["!1;$49;38444"],
+            ["?!1;$49;38444"],
             extraction.messages(),
             "KsumDelimiter marker message not extracted"
         )
@@ -448,7 +448,7 @@ class KsumDelimiterPartialChecksumBuffers(unittest.TestCase):
         KsumDelimiter partial checksum without next marker stays in buffer.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;25.5;384")
+        extraction = delimiter.extract("?!1;25.5;384")
         self.assertTrue(
             extraction.empty(),
             "KsumDelimiter partial checksum was incorrectly extracted"
@@ -465,9 +465,9 @@ class KsumDelimiterNonDigitChecksumInvalid(unittest.TestCase):
         KsumDelimiter non-digit checksum makes message invalid.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!1;25.5;abc!2;30.0;12345!3")
+        extraction = delimiter.extract("?!1;25.5;abc?!2;30.0;12345?!3")
         self.assertEqual(
-            ["!2;30.0;12345"],
+            ["?!2;30.0;12345"],
             extraction.messages(),
             "KsumDelimiter message with non-digit checksum should be skipped"
         )
@@ -483,9 +483,9 @@ class KsumDelimiterMissingSemicolonsInvalid(unittest.TestCase):
         KsumDelimiter message missing semicolons is invalid.
         """
         delimiter = KsumDelimiter()
-        extraction = delimiter.extract("!nosemicolons!1;25.5;38444!2")
+        extraction = delimiter.extract("?!nosemicolons?!1;25.5;38444?!2")
         self.assertEqual(
-            ["!1;25.5;38444"],
+            ["?!1;25.5;38444"],
             extraction.messages(),
             "KsumDelimiter message without semicolons should be skipped"
         )
@@ -560,9 +560,9 @@ class FramedConnectionLoopsUntilComplete(unittest.TestCase):
         FramedConnection loops reading until complete message found.
         """
         results = [
-            Right(ReceivedBytes("!1;25")),
+            Right(ReceivedBytes("?!1;25")),
             Right(ReceivedBytes(".5;38444")),
-            Right(ReceivedBytes("!2;30"))
+            Right(ReceivedBytes("?!2;30"))
         ]
         fake = FakeConnection(results)
         delay = FakeDelay()
@@ -571,7 +571,7 @@ class FramedConnectionLoopsUntilComplete(unittest.TestCase):
         framed = FramedConnection(delayed, delimiter)
         result = framed.receive()
         self.assertEqual(
-            "!1;25.5;38444",
+            "?!1;25.5;38444",
             result.value().content(),
             "FramedConnection did not assemble complete message from chunks"
         )
@@ -609,8 +609,8 @@ class FramedConnectionPreservesRemainderFirstMessage(unittest.TestCase):
         FramedConnection first message is correct.
         """
         results = [
-            Right(ReceivedBytes("!1;25.5;38444!2;30.0;12345!3")),
-            Right(ReceivedBytes(";40.0;99999!4"))
+            Right(ReceivedBytes("?!1;25.5;38444?!2;30.0;12345?!3")),
+            Right(ReceivedBytes(";40.0;99999?!4"))
         ]
         fake = FakeConnection(results)
         delay = FakeDelay()
@@ -619,7 +619,7 @@ class FramedConnectionPreservesRemainderFirstMessage(unittest.TestCase):
         framed = FramedConnection(delayed, delimiter)
         first = framed.receive()
         self.assertEqual(
-            "!1;25.5;38444",
+            "?!1;25.5;38444",
             first.value().content(),
             "FramedConnection first message not correct"
         )
@@ -635,8 +635,8 @@ class FramedConnectionPreservesRemainderSecondMessage(unittest.TestCase):
         FramedConnection second message uses preserved remainder.
         """
         results = [
-            Right(ReceivedBytes("!1;25.5;38444!2;30.0;12345!3")),
-            Right(ReceivedBytes(";40.0;99999!4"))
+            Right(ReceivedBytes("?!1;25.5;38444?!2;30.0;12345?!3")),
+            Right(ReceivedBytes(";40.0;99999?!4"))
         ]
         fake = FakeConnection(results)
         delay = FakeDelay()
@@ -646,7 +646,7 @@ class FramedConnectionPreservesRemainderSecondMessage(unittest.TestCase):
         framed.receive()
         second = framed.receive()
         self.assertEqual(
-            "!2;30.0;12345",
+            "?!2;30.0;12345",
             second.value().content(),
             "FramedConnection second message not correct, remainder not preserved"
         )
@@ -662,11 +662,11 @@ class FramedConnectionHandlesEmptyReads(unittest.TestCase):
         FramedConnection handles empty reads while accumulating.
         """
         results = [
-            Right(ReceivedBytes("!1;25")),
+            Right(ReceivedBytes("?!1;25")),
             Right(ReceivedBytes("")),
             Right(ReceivedBytes(".5;38444")),
             Right(ReceivedBytes("")),
-            Right(ReceivedBytes("!2"))
+            Right(ReceivedBytes("?!2"))
         ]
         fake = FakeConnection(results)
         delay = FakeDelay()
@@ -675,9 +675,66 @@ class FramedConnectionHandlesEmptyReads(unittest.TestCase):
         framed = FramedConnection(delayed, delimiter)
         result = framed.receive()
         self.assertEqual(
-            "!1;25.5;38444",
+            "?!1;25.5;38444",
             result.value().content(),
             "FramedConnection message not assembled with empty reads in between"
+        )
+
+
+class KsumDelimiterRealDataExtractsMessages(unittest.TestCase):
+    """
+    Tests that KsumDelimiter extracts messages from real sensor data.
+    """
+
+    def test(self):
+        """
+        KsumDelimiter extracts messages from dump.txt format.
+        """
+        delimiter = KsumDelimiter()
+        data = "?!1;$49;17145?!1;$49;17145?!1;$49;17145?!1;$49;17145"
+        extraction = delimiter.extract(data)
+        self.assertEqual(
+            3,
+            len(extraction.messages()),
+            "KsumDelimiter did not extract expected number of messages from real data"
+        )
+
+
+class KsumDelimiterRealDataCorrectMessage(unittest.TestCase):
+    """
+    Tests that KsumDelimiter extracts correct message content.
+    """
+
+    def test(self):
+        """
+        KsumDelimiter extracts correct message from real data.
+        """
+        delimiter = KsumDelimiter()
+        data = "?!1;$49;17145?!1;$49;17145"
+        extraction = delimiter.extract(data)
+        self.assertEqual(
+            "?!1;$49;17145",
+            extraction.messages()[0],
+            "KsumDelimiter extracted wrong message content"
+        )
+
+
+class KsumDelimiterRealDataRemainder(unittest.TestCase):
+    """
+    Tests that KsumDelimiter keeps correct remainder from real data.
+    """
+
+    def test(self):
+        """
+        KsumDelimiter keeps last partial message as remainder.
+        """
+        delimiter = KsumDelimiter()
+        data = "?!1;$49;17145?!1;$49;17145?!1;$49"
+        extraction = delimiter.extract(data)
+        self.assertEqual(
+            "?!1;$49",
+            extraction.remainder(),
+            "KsumDelimiter did not keep correct remainder"
         )
 
 

@@ -15,10 +15,15 @@ Example usage:
         bytes_result = connection.receive()
         if bytes_result.successful():
             data = bytes_result.value().content()
+
+    # Buffered connection for partial message handling:
+    delimiter = KsumDelimiter()
+    buffered = BufferedConnection(connection, delimiter)
+    result = buffered.receive()  # Returns complete messages only
 """
 import time
 from serial_to_mqtt.result.either import Right, Left
-from serial_to_mqtt.serial.port import ReceivedBytes
+from serial_to_mqtt.serial.port import ReceivedBytes, AccumulatedBytes
 
 
 class SerialConnection(object):
@@ -173,3 +178,70 @@ class SerialConfig(object):
             int: The number of stop bits
         """
         return self._stopbits
+
+
+class BufferedConnection(object):
+    """
+    Buffered serial connection that accumulates bytes until complete messages.
+
+    BufferedConnection wraps a SerialConnection and uses a delimiter to
+    identify when complete messages are available. It maintains state between
+    calls to handle messages split across multiple reads.
+
+    Example usage:
+        connection = SerialConnection(port, config)
+        delimiter = KsumDelimiter()
+        buffered = BufferedConnection(connection, delimiter)
+
+        result = buffered.receive()  # Returns only complete messages
+    """
+
+    def __init__(self, connection, delimiter):
+        """
+        Create a BufferedConnection wrapping a connection.
+
+        Args:
+            connection: SerialConnection to wrap
+            delimiter: Delimiter for identifying message boundaries
+        """
+        self._connection = connection
+        self._delimiter = delimiter
+        self._accumulated = AccumulatedBytes("")
+
+    def open(self):
+        """
+        Open the underlying serial connection.
+
+        Returns:
+            Either: Right(success) if open succeeds, Left(error) if fails
+        """
+        return self._connection.open()
+
+    def receive(self):
+        """
+        Receive complete message from serial connection.
+
+        Returns:
+            Either: Right(ReceivedBytes) with complete message, Left(error) if failed
+
+        This method accumulates bytes until a complete message is found.
+        If multiple messages are available, returns the first one.
+        """
+        result = self._connection.receive()
+        if not result.successful():
+            return result
+        self._accumulated = self._accumulated.append(result.value())
+        extraction = self._delimiter.extract(self._accumulated.content())
+        if extraction.empty():
+            return Right(ReceivedBytes(""))
+        self._accumulated = self._accumulated.trim(extraction.remainder())
+        return Right(ReceivedBytes(extraction.messages()[0]))
+
+    def close(self):
+        """
+        Close the underlying serial connection.
+
+        Returns:
+            Either: Right(success) if close succeeds, Left(error) if fails
+        """
+        return self._connection.close()

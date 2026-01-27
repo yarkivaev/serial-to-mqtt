@@ -7,6 +7,11 @@ This module provides value objects for serial port configuration and data.
 Example usage:
     port = PortNumber(13)  # COM13
     num = port.number()  # Returns: 12 (pyserial uses 0-based indexing)
+
+    buffer = AccumulatedBytes("")
+    buffer = buffer.append(ReceivedBytes("!1;25"))
+    buffer = buffer.append(ReceivedBytes(".5;38444"))
+    content = buffer.content()  # "!1;25.5;38444"
 """
 
 
@@ -99,3 +104,61 @@ class EmptyBytes(object):
             str: Empty string
         """
         return ""
+
+
+class AccumulatedBytes(object):
+    """
+    Immutable buffer for accumulating serial bytes across reads.
+
+    AccumulatedBytes represents a running buffer of received bytes that may
+    contain partial messages. New bytes are appended via the append() method
+    which returns a new instance, preserving immutability.
+
+    Example usage:
+        buffer = AccumulatedBytes("")
+        buffer = buffer.append(ReceivedBytes("!1;25"))
+        buffer = buffer.append(ReceivedBytes(".5;38444"))
+        content = buffer.content()  # "!1;25.5;38444"
+    """
+
+    def __init__(self, content):
+        """
+        Create AccumulatedBytes with initial content.
+
+        Args:
+            content (str): The accumulated bytes
+        """
+        self._content = content
+
+    def append(self, received):
+        """
+        Create new AccumulatedBytes with appended data.
+
+        Args:
+            received (ReceivedBytes): New bytes to append
+
+        Returns:
+            AccumulatedBytes: New instance with appended content
+        """
+        return AccumulatedBytes(self._content + received.content())
+
+    def content(self):
+        """
+        Extract the accumulated content.
+
+        Returns:
+            str: All accumulated bytes as string
+        """
+        return self._content
+
+    def trim(self, remainder):
+        """
+        Create new AccumulatedBytes keeping only remainder.
+
+        Args:
+            remainder (str): The bytes to keep
+
+        Returns:
+            AccumulatedBytes: New instance with only remainder
+        """
+        return AccumulatedBytes(remainder)

@@ -87,7 +87,8 @@ class SerialConnection(object):
             waiting = self._serial.inWaiting()
             if waiting > 0:
                 data = self._serial.read(waiting)
-                return Right(ReceivedBytes(data))
+                text = data.decode('ascii', errors='replace')
+                return Right(ReceivedBytes(text))
             else:
                 return Right(ReceivedBytes(""))
         except Exception as problem:

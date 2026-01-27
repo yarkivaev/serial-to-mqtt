@@ -65,12 +65,12 @@ class ModbusRtuProtocol(Protocol):
         self._reading_factory = reading_factory
         self._clock = clock
 
-    def parse(self, bytes):
+    def parse(self, received):
         """
         Parse raw bytes into a Reading.
 
         Args:
-            bytes: Raw bytes received from serial connection
+            received (ReceivedBytes): Bytes received from serial connection
 
         Returns:
             Either: Right(Reading) if parsing succeeds, Left(error) if fails
@@ -82,6 +82,7 @@ class ModbusRtuProtocol(Protocol):
         4. Extract numeric value
         5. Use factories to create measurement and reading with timestamp
         """
+        bytes = received.content()
         if len(bytes) < 5:
             return Left("Modbus RTU message too short")
         if not self._checksum.valid(bytes):

@@ -33,18 +33,20 @@ class MqttClient(object):
             client.send("test/topic", "hello")
     """
 
-    def __init__(self, broker, port, identifier):
+    def __init__(self, broker, port, identifier, qos):
         """
-        Create a MqttClient with broker, port, and client ID.
+        Create a MqttClient with broker, port, client ID, and QoS.
 
         Args:
             broker (BrokerAddress): The MQTT broker address
             port (BrokerPort): The MQTT broker port
             identifier (ClientId): The MQTT client identifier
+            qos (QualityOfService): The MQTT QoS level
         """
         self._broker = broker
         self._port = port
         self._identifier = identifier
+        self._qos = qos
         self._client = None
 
     def connect(self):
@@ -77,7 +79,7 @@ class MqttClient(object):
         if self._client is None:
             return Left("MQTT client not connected")
         try:
-            result = self._client.publish(topic, payload)
+            result = self._client.publish(topic, payload, qos=self._qos.level())
             if result.rc == 0:
                 return Right("Message sent to topic: {0}".format(topic))
             else:
@@ -189,5 +191,36 @@ class ClientId(object):
 
         Returns:
             str: The client identifier
+        """
+        return self._value
+
+
+class QualityOfService(object):
+    """
+    MQTT Quality of Service level value object.
+
+    QualityOfService encapsulates the QoS level for MQTT messages.
+    Valid levels: 0 (at most once), 1 (at least once), 2 (exactly once).
+
+    Example usage:
+        qos = QualityOfService(1)
+        level = qos.level()  # Returns: 1
+    """
+
+    def __init__(self, value):
+        """
+        Create a QualityOfService.
+
+        Args:
+            value (int): The QoS level (0, 1, or 2)
+        """
+        self._value = value
+
+    def level(self):
+        """
+        Extract the QoS level.
+
+        Returns:
+            int: The QoS level
         """
         return self._value
